@@ -14,6 +14,42 @@
   if (!hasGsap || reduceMotion) root.classList.remove('motion');
   var motion = root.classList.contains('motion');
 
+  /* ---------- スクロール移動（ブラウザ標準のsmoothはピン留めと競合して止まるためGSAPで制御） ---------- */
+  var canScrollTo = hasGsap && !!window.ScrollToPlugin;
+  if (canScrollTo) gsap.registerPlugin(ScrollToPlugin);
+  function scrollToY(y, done) {
+    y = Math.max(0, Math.round(y));
+    if (reduceMotion || !canScrollTo) { window.scrollTo(0, y); if (done) done(); return; }
+    var dist = Math.abs(y - window.pageYOffset);
+    var dur = Math.min(1.8, 0.6 + dist / 6000);
+    var finished = false;
+    function finish() { if (finished) return; finished = true; clearTimeout(guard); if (done) done(); }
+    var tween = gsap.to(window, {
+      scrollTo: { y: y, autoKill: false },
+      duration: dur,
+      ease: 'power3.inOut',
+      overwrite: true,
+      onComplete: finish
+    });
+    // アニメーションが止められる環境でも必ず目的地へ移動させる保険
+    var guard = setTimeout(function () {
+      if (finished) return;
+      tween.kill();
+      window.scrollTo(0, y);
+      finish();
+    }, dur * 1000 + 900);
+  }
+  // 要素の位置（フェードイン中の移動量を除く）からスクロール先を計算
+  function anchorY(el) {
+    var shift = 0;
+    try { var tf = getComputedStyle(el).transform; if (tf && tf !== 'none') shift = new DOMMatrixReadOnly(tf).m42; } catch (err) {}
+    return el.getBoundingClientRect().top - shift + window.pageYOffset - ($('#header').offsetHeight + 12);
+  }
+  function scrollToCenter(el) {
+    var r = el.getBoundingClientRect();
+    scrollToY(r.top + window.pageYOffset - (window.innerHeight - r.height) / 2);
+  }
+
   /* ---------- 初回アンベール ---------- */
   (function () {
     var heroImg = $('.scene--hero img');
@@ -74,7 +110,7 @@
   onScroll();
 
   toTop.addEventListener('click', function () {
-    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    scrollToY(0);
   });
 
   /* ---------- ページ内リンク ---------- */
@@ -95,11 +131,14 @@
       if (radio) { radio.checked = true; clearError('subject'); }
     }
 
-    // フェードイン前の移動量（translateY）を差し引いて正しい位置へ
-    var shift = 0;
-    try { var tf = getComputedStyle(target).transform; if (tf && tf !== 'none') shift = new DOMMatrixReadOnly(tf).m42; } catch (err) {}
-    var top = target.getBoundingClientRect().top - shift + window.pageYOffset - (id === '#top' ? 0 : header.offsetHeight + 12);
-    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? 'auto' : 'smooth' });
+    if (id === '#top') { scrollToY(0); }
+    else {
+      // 到着後に位置を再確認（画像の読込やアニメーションで位置がずれた場合に補正）
+      scrollToY(anchorY(target), function () {
+        var fix = anchorY(target);
+        if (Math.abs(fix - window.pageYOffset) > 4) window.scrollTo(0, fix);
+      });
+    }
     if (history.replaceState) history.replaceState(null, '', id === '#top' ? location.pathname : id);
   });
 
@@ -147,7 +186,14 @@
 
   /* ---------- 手数料タブ ---------- */
   var tabs = $$('.tabs__btn');
+  var tabList = $('.tabs');
   function selectTab(btn) {
+    var idx = tabs.indexOf(btn);
+    var prevIdx = parseInt(tabList.getAttribute('data-active'), 10) || 0;
+    if (idx === prevIdx) return;
+    tabList.setAttribute('data-active', idx);
+    var dir = idx > prevIdx ? 1 : -1;
+    var incoming = document.getElementById(btn.getAttribute('aria-controls'));
     tabs.forEach(function (t) {
       var on = t === btn;
       t.classList.toggle('is-active', on);
@@ -155,6 +201,11 @@
       t.tabIndex = on ? 0 : -1;
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
     });
+    // 選んだ側から項目がスライドして現れる
+    if (hasGsap && !reduceMotion) {
+      gsap.fromTo(incoming, { autoAlpha: 0, x: dir * 60 }, { autoAlpha: 1, x: 0, duration: 0.6, ease: 'power3.out', clearProps: 'transform' });
+      gsap.fromTo($$('tbody tr', incoming), { autoAlpha: 0, x: dir * 24 }, { autoAlpha: 1, x: 0, duration: 0.45, stagger: 0.05, delay: 0.12, ease: 'power2.out', clearProps: 'transform' });
+    }
   }
   tabs.forEach(function (t, i) {
     t.addEventListener('click', function () { selectTab(t); });
@@ -162,6 +213,34 @@
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
       selectTab(next); next.focus();
+    });
+  });
+
+  /* ---------- FAQ：＋をクリックで回答がスライドして開く ---------- */
+  $$('.faq__item').forEach(function (item) {
+    var summary = $('summary', item), answer = $('.faq__a', item);
+    if (!summary || !answer || reduceMotion || !answer.animate) return;
+    var anim = null;
+    summary.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (anim) anim.cancel();
+      var opening = !item.open;
+      if (opening) item.open = true;
+      var h = answer.scrollHeight;
+      item.classList.toggle('is-closing', !opening);
+      anim = answer.animate(
+        opening
+          ? [{ height: '0px', opacity: 0, transform: 'translateY(-8px)' }, { height: h + 'px', opacity: 1, transform: 'none' }]
+          : [{ height: h + 'px', opacity: 1 }, { height: '0px', opacity: 0 }],
+        { duration: opening ? 420 : 300, easing: 'cubic-bezier(.22,.8,.24,1)' }
+      );
+      answer.style.overflow = 'hidden';
+      anim.onfinish = function () {
+        anim = null;
+        answer.style.overflow = '';
+        if (!opening) item.open = false;
+        item.classList.remove('is-closing');
+      };
     });
   });
 
@@ -392,7 +471,7 @@
   });
 
   /* ---------- 汎用リビール ---------- */
-  var revealTargets = $$('.sec-head, .svc, .business__body > *, .cta-band__inner > *, .fee-panel, .fee-cta, .faq__item, .way, .form, .company, .contact__hero-txt > *');
+  var revealTargets = $$('.sec-head, .svc, .business__body > *, .cta-band__inner > *, .tabs, #panel-buy, .fee-cta, .faq__item, .way, .form, .company, .contact__hero-txt > *');
   gsap.set(revealTargets, { autoAlpha: 0, y: 40 });
   ScrollTrigger.batch(revealTargets, {
     start: 'top 88%',
@@ -519,7 +598,7 @@
       });
       if (firstBad) {
         firstBad.focus({ preventScroll: true });
-        firstBad.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        scrollToCenter(firstBad.closest('.form__group') || firstBad);
         return;
       }
       if (form.elements['bot-field'].value) return; // スパム
@@ -552,7 +631,7 @@
           '</div>';
         var done = $('.form-done', form);
         done.focus({ preventScroll: true });
-        done.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        scrollToCenter(done);
       }).catch(function () {
         status.classList.add('is-error');
         status.innerHTML = (serverMsg ? serverMsg.replace(/[<>&]/g, '') + '<br>' : '送信できませんでした。') +

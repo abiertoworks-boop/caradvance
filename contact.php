@@ -121,7 +121,7 @@ if (!$sent) {
 @touch($lock);
 
 /* ---- お客様への自動返信 ---- */
-$tel_ = TEL; $line_ = LINE_URL; $site_ = SITE_NAME; $to_ = MAIL_TO;
+$tel_ = TEL; $line_ = LINE_URL; $site_ = SITE_NAME;
 $reply = <<<TXT
 {$name} 様
 
@@ -142,16 +142,16 @@ $reply = <<<TXT
 電話：{$tel_}（休業日：日曜日）
 LINE：{$line_}
 
-※本メールは送信専用アドレスから自動送信しています。
-　ご返信の際は {$to_} 宛てにお願いいたします。
+※本メールは送信専用アドレスから自動送信しています。このメールへのご返信はできません。
+　追加のご連絡は、当サイトのお問い合わせフォーム・お電話・LINEよりお願いいたします。
 
 ──────────────────
 有限会社NOAH　カーアドバンス（Car Advance）
 〒661-0951 兵庫県尼崎市田能5-7-15-103
-TEL：{$tel_}　Mail：{$to_}
+TEL：{$tel_}
 ──────────────────
 TXT;
 
-@mb_send_mail($email, '【Car Advance】お問い合わせありがとうございます', $reply, $fromHeader . "\r\nReply-To: " . MAIL_TO);
+@mb_send_mail($email, '【Car Advance】お問い合わせありがとうございます', $reply, $fromHeader);
 
 respond(true);
