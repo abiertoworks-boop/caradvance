@@ -78,7 +78,7 @@
     var el = e.target.closest('[data-cta]');
     if (!el) return;
     var name = el.getAttribute('data-cta');
-    var type = name.indexOf('line') === 0 ? 'line' : name.indexOf('tel') === 0 ? 'tel' : 'form';
+    var type = name.indexOf('line') === 0 ? 'line' : name.indexOf('tel') === 0 ? 'tel' : name.indexOf('mail') === 0 ? 'mail' : 'form';
     track('cta_click', { cta_name: name, cta_type: type });
   });
 
