@@ -95,7 +95,10 @@
       if (radio) { radio.checked = true; clearError('subject'); }
     }
 
-    var top = target.getBoundingClientRect().top + window.pageYOffset - (id === '#top' ? 0 : header.offsetHeight - 1);
+    // フェードイン前の移動量（translateY）を差し引いて正しい位置へ
+    var shift = 0;
+    try { var tf = getComputedStyle(target).transform; if (tf && tf !== 'none') shift = new DOMMatrixReadOnly(tf).m42; } catch (err) {}
+    var top = target.getBoundingClientRect().top - shift + window.pageYOffset - (id === '#top' ? 0 : header.offsetHeight + 12);
     window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? 'auto' : 'smooth' });
     if (history.replaceState) history.replaceState(null, '', id === '#top' ? location.pathname : id);
   });
@@ -525,19 +528,26 @@
       var fd = new FormData(form);
       var endpoint = (form.getAttribute('data-endpoint') || '').trim();
       var ctrl = 'AbortController' in window ? new AbortController() : null;
-      var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 15000);
-      var req = endpoint
-        ? fetch(endpoint, { method: 'POST', body: fd, headers: { Accept: 'application/json' }, signal: ctrl && ctrl.signal })
-        : fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fd).toString(), signal: ctrl && ctrl.signal });
+      var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 20000);
+      var serverMsg = '';
 
-      req.then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+      fetch(endpoint, { method: 'POST', body: fd, headers: { Accept: 'application/json' }, credentials: 'same-origin', signal: ctrl && ctrl.signal })
+      .then(function (res) {
+        // PHPが動かない環境（静的ホスティング等）ではJSONが返らないので失敗扱い
+        return res.json().catch(function () { return null; }).then(function (data) {
+          if (!res.ok || !data || data.ok !== true) {
+            if (data && data.message && res.status !== 500) serverMsg = data.message;
+            throw new Error('HTTP ' + res.status);
+          }
+        });
+      })
+      .then(function () {
         track('generate_lead', { form_name: 'contact', subject: fd.get('subject') });
         form.innerHTML =
           '<div class="form-done" tabindex="-1">' +
           '<i class="fas fa-circle-check" aria-hidden="true"></i>' +
           '<h3>お問い合わせありがとうございます</h3>' +
-          '<p>内容を確認のうえ、担当者よりご連絡いたします。<br>お急ぎの場合はLINEまたはお電話でもお気軽にどうぞ。</p>' +
+          '<p>ご入力のメールアドレスに確認メールをお送りしました。<br>内容を確認のうえ、担当者よりご連絡いたします。<br>お急ぎの場合はLINEまたはお電話でもお気軽にどうぞ。</p>' +
           '<a href="https://lin.ee/raFB37D9" class="btn btn--line" target="_blank" rel="noopener" data-cta="line_thanks"><i class="fab fa-line" aria-hidden="true"></i>LINEで友だち追加</a>' +
           '</div>';
         var done = $('.form-done', form);
@@ -545,7 +555,8 @@
         done.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
       }).catch(function () {
         status.classList.add('is-error');
-        status.innerHTML = '送信できませんでした。お手数ですが<a href="https://lin.ee/raFB37D9" target="_blank" rel="noopener">LINE</a>またはお電話（<a href="tel:0664157184">06-6415-7184</a>）でご連絡ください。';
+        status.innerHTML = (serverMsg ? serverMsg.replace(/[<>&]/g, '') + '<br>' : '送信できませんでした。') +
+          'お手数ですが<a href="https://lin.ee/raFB37D9" target="_blank" rel="noopener">LINE</a>またはお電話（<a href="tel:0664157184">06-6415-7184</a>）でもご連絡いただけます。';
       }).then(function () {
         clearTimeout(timer);
         form.classList.remove('is-sending');

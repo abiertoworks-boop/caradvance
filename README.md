@@ -16,9 +16,10 @@ images/
 
 ## 公開前の設定
 
-- **フォーム送信先**：Netlify で公開する場合はそのまま動作します（Netlify Forms）。
-  それ以外のホスティングでは `index.html` の `<form id="form" ... data-endpoint="">` に
-  Formspree 等の送信先URLを設定してください。
+- **フォーム送信先**：`contact.php`（PHP + mb_send_mail）で送信します。通知先は `contact.php` 冒頭の `MAIL_TO`（現在 linklink5715@gmail.com）。
+  PHPが動かない静的ホスティング（GitHub Pages 等）ではフォームは送信エラーになり、LINE・電話へ案内します。
+- **お名前.com への自動デプロイ**：`.github/workflows/deploy-onamae.yml`。リポジトリの Secrets に
+  `FTP_SERVER` / `FTP_USERNAME` / `FTP_PASSWORD` / `FTP_SERVER_DIR` を登録すると、main への push で自動アップロードされます。
 - **古物商許可番号**：`index.html` の会社情報（コメントアウト部分）に記載してください。
 - **OGP**：本番ドメイン確定後、`og:image` を絶対URLに変更してください。
 

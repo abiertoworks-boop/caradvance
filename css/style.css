@@ -525,6 +525,8 @@ html:not(.motion) .numbers__list li { color: #fff; }
   box-shadow: var(--shadow-lg); background: var(--ink);
 }
 .reason__media img { width: 100%; height: 118%; object-fit: cover; margin-top: -9%; }
+.reason__media img.pos-right { object-position: 70% 50%; }
+.reason__media img.pos-top { object-position: 50% 20%; }
 .reason__media::after { content: ""; position: absolute; inset: auto 0 0 0; height: 4px; background: var(--red); transform-origin: left; }
 .reason__body { position: relative; }
 .reason__no {
@@ -544,16 +546,24 @@ html:not(.motion) .numbers__list li { color: #fff; }
 /* =========================================================
    CTA BAND
 ========================================================= */
-.cta-band { position: relative; overflow: hidden; color: #fff; background: #0c0c0c; padding: clamp(80px, 11vw, 140px) 0; text-align: center; }
+/* テキストは左寄せ、右側の車をはっきり見せる */
+.cta-band { position: relative; overflow: hidden; color: #fff; background: #0c0c0c; padding: clamp(80px, 11vw, 140px) 0; text-align: left; }
 .cta-band__bg { position: absolute; inset: 0; }
-.cta-band__bg img { width: 100%; height: 120%; object-fit: cover; object-position: 50% 60%; opacity: .55; }
-.cta-band::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.85), rgba(0,0,0,.35) 50%, rgba(0,0,0,.85)); }
+.cta-band__bg img { width: 100%; height: 120%; object-fit: cover; object-position: 50% 60%; opacity: .95; filter: brightness(1.15) contrast(1.05); }
+.cta-band::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.7) 32%, rgba(0,0,0,.15) 58%, transparent 75%); }
 .cta-band__inner { position: relative; z-index: 2; }
-.cta-band .eyebrow::after { content: ""; width: 28px; height: 2px; background: currentColor; }
-.cta-band__title { font-size: clamp(28px, 4.6vw, 54px); font-weight: 900; line-height: 1.35; margin-bottom: 16px; }
+.cta-band__inner > * { max-width: 560px; }
+.cta-band__title { font-size: clamp(28px, 4.2vw, 50px); font-weight: 900; line-height: 1.35; margin-bottom: 16px; }
 .cta-band__txt { color: rgba(255,255,255,.8); margin-bottom: 32px; }
-.cta-band__actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
-@media (max-width: 767px) { .cta-band__actions .btn { width: 100%; } }
+.cta-band__actions { display: flex; flex-wrap: wrap; gap: 14px; }
+@media (max-width: 767px) {
+  .cta-band { padding: 0 0 56px; }
+  .cta-band__bg { position: relative; height: 230px; }
+  .cta-band__bg img { height: 118%; object-position: 62% 60%; }
+  .cta-band::after { background: linear-gradient(180deg, transparent 0, transparent 150px, #0c0c0c 230px); }
+  .cta-band__inner { margin-top: -20px; }
+  .cta-band__actions .btn { width: 100%; }
+}
 
 /* =========================================================
    SERVICES
@@ -631,10 +641,16 @@ html:not(.motion) .numbers__list li { color: #fff; }
 .business__big em { font-style: normal; font-weight: 900; font-size: clamp(20px, 2.2vw, 28px); margin-left: 12px; }
 .business .checks { margin-bottom: 32px; }
 .chip--dark { background: rgba(255,255,255,.14); }
-.business__media { position: relative; }
-.business__media::before { content: ""; position: absolute; left: 10%; right: 10%; bottom: 6%; height: 14%; background: radial-gradient(ellipse, rgba(0,0,0,.7), transparent 70%); filter: blur(8px); }
-.business__media img { position: relative; mix-blend-mode: multiply; filter: contrast(1.05); background: transparent; border-radius: var(--radius); }
-.business__media { background: radial-gradient(ellipse at center, #f2f2f2 0%, #d9d9d9 60%, #bdbdbd 100%); border-radius: 20px; padding: 6% 4%; }
+.business__media { position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.5); aspect-ratio: 4 / 3; }
+.business__media img { width: 100%; height: 100%; object-fit: cover; object-position: 35% 60%; }
+.business__media figcaption {
+  position: absolute; left: 16px; bottom: 16px; right: 16px;
+  display: inline-flex; align-items: center; gap: 10px; width: fit-content;
+  padding: 10px 16px; border-radius: 999px;
+  background: rgba(10,10,10,.82); backdrop-filter: blur(6px);
+  font-size: 13.5px; font-weight: 700; color: #fff;
+}
+.business__media figcaption i { color: var(--red-hi); }
 @media (max-width: 899px) { .business__inner { grid-template-columns: 1fr; } .business__media { order: -1; } }
 
 /* =========================================================
@@ -836,7 +852,7 @@ html:not(.motion) .numbers__list li { color: #fff; }
 ========================================================= */
 .fixed-cta {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 950;
-  display: none; grid-template-columns: 1.3fr 1fr 1.3fr; gap: 1px;
+  display: none; grid-template-columns: 1fr 1fr 1.5fr; gap: 1px;
   background: rgba(0,0,0,.2);
   padding-bottom: env(safe-area-inset-bottom);
   transform: translateY(110%); transition: transform .45s var(--ease);
@@ -888,3 +904,9 @@ html:not(.motion) .numbers__list li { color: #fff; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .venues__track { animation: none; flex-wrap: wrap; }
 }
+
+/* アイコンのみのボタン（ヘッダーLINE） */
+.btn--icon { width: 40px; min-height: 40px; height: 40px; padding: 0; }
+.btn--icon i { font-size: 22px; }
+.float-line span { font-size: 10px; letter-spacing: -.02em; }
+.company__list dd a.company__mail { font-family: var(--ff-ja); font-size: 14px; letter-spacing: 0; color: #fff; text-decoration: underline; text-underline-offset: 3px; word-break: break-all; }
