@@ -14,6 +14,11 @@ const TEL = '06-6415-7184';
 const LINE_URL = 'https://lin.ee/raFB37D9';
 // 同一IPからの連続送信を制限する秒数
 const THROTTLE_SEC = 30;
+// サイト全体で1時間に受け付ける送信数の上限（大量送信・迷惑メール踏み台化の対策）
+const HOURLY_LIMIT = 30;
+// フォームの選択肢（これ以外の値は受け付けない）
+const SUBJECTS = ['車を買いたい（落札代行）', '車を売りたい（出品代行）', '査定・買取', '廃車・不動車', '法人・福祉車両のご相談', 'その他'];
+const BUDGETS = ['', '〜100万円', '100〜200万円', '200〜300万円', '300〜500万円', '500万円〜', '未定・相談したい'];
 /* ================= */
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -62,6 +67,20 @@ if (is_file($lock) && (time() - filemtime($lock)) < THROTTLE_SEC) {
     respond(false, '短時間に連続して送信されました。しばらくしてから再度お試しください。', 429);
 }
 
+// サイト全体の送信数の上限（1時間あたり）
+$gl = rtrim(sys_get_temp_dir(), '/\\') . '/caradvance_form_global';
+$stamps = [];
+if (is_file($gl)) {
+    $raw = @file_get_contents($gl);
+    foreach (explode("\n", (string) $raw) as $line) {
+        $ts = (int) $line;
+        if ($ts > time() - 3600) $stamps[] = $ts;
+    }
+}
+if (count($stamps) >= HOURLY_LIMIT) {
+    respond(false, 'ただいま混み合っています。お手数ですがLINEまたはお電話でご連絡ください。', 429);
+}
+
 $subject = oneline(field('subject', 60));
 $car     = oneline(field('car', 200));
 $budget  = oneline(field('budget', 60));
@@ -72,7 +91,8 @@ $message = field('message', 3000);
 $agree   = field('agree', 20);
 
 $errors = [];
-if ($subject === '') $errors[] = 'ご相談内容';
+if ($subject === '' || !in_array($subject, SUBJECTS, true)) $errors[] = 'ご相談内容';
+if (!in_array($budget, BUDGETS, true)) $errors[] = 'ご予算';
 if ($name === '') $errors[] = 'お名前';
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'メールアドレス';
 if ($tel !== '' && !preg_match('/^[0-9\-\s()+]{10,20}$/', $tel)) $errors[] = '電話番号';
@@ -119,6 +139,8 @@ if (!$sent) {
 }
 
 @touch($lock);
+$stamps[] = time();
+@file_put_contents($gl, implode("\n", $stamps), LOCK_EX);
 
 /* ---- お客様への自動返信 ---- */
 $tel_ = TEL; $line_ = LINE_URL; $site_ = SITE_NAME;
@@ -134,8 +156,7 @@ $reply = <<<TXT
 ■ ご予算：{$budget}
 ■ お名前：{$name}
 ■ 電話番号：{$tel}
-■ ご相談内容の詳細：
-{$message}
+■ ご相談内容の詳細：ご入力いただいた内容を確認のうえ、ご連絡いたします
 ━━━━━━━━━━━━━━━━━━━━
 
 お急ぎの場合は、お電話またはLINEでもお気軽にご連絡ください。
