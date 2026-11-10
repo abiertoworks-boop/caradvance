@@ -23,7 +23,7 @@ images/
   `FTP_SERVER` / `FTP_USERNAME` / `FTP_PASSWORD` / `FTP_SERVER_DIR` を登録すると、main への push で自動アップロードされます。
 - **古物商許可番号**：`index.html` の会社情報（コメントアウト部分）に記載してください。
 - **OGP / canonical**：`https://www.ucar-advance.com/` を前提に設定済みです。ドメインを変える場合は `index.html` と `sitemap.xml` を更新してください。
-- **構造化データ**：営業時間の時刻が未確定のため、JSON-LD から営業時間を外しています。確定したら `openingHoursSpecification`（opens / closes つき）を追加してください。
+- **構造化データ**：営業時間（月〜土 10:00〜18:00・日曜休業）は、画面の会社情報と JSON-LD の `openingHoursSpecification` の両方に記載しています。変更するときは両方を同じ内容に直してください。
 
 ## 計測
 
